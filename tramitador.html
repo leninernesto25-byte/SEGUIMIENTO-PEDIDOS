@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Blue Logistics — Tramitador</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'IBM Plex Sans',sans-serif;background:#f0f2f5;color:#1a2744;min-height:100vh}
+header{background:#0d3b8c;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.logo{font-size:15px;font-weight:600;color:#fff}
+.logo span{color:#60a5fa}
+.header-right{display:flex;align-items:center;gap:12px}
+.badge-ready{display:inline-flex;align-items:center;gap:6px;background:rgba(110,231,183,.15);color:#6ee7b7;border:0.5px solid rgba(110,231,183,.3);border-radius:99px;padding:4px 12px;font-size:12px;font-weight:500}
+.alert-dot{width:8px;height:8px;border-radius:50%;background:#6ee7b7}
+.alert-dot.pulse{animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.4)}}
+.sync-ind{font-size:11px;color:rgba(255,255,255,.5)}
+.page{max-width:780px;margin:0 auto;padding:20px 16px}
+.section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px}
+.section-title{font-size:14px;font-weight:500;color:#1a2744}
+.section-sub{font-size:11px;color:#6b7280;margin-top:2px}
+.count-badge{font-size:12px;font-weight:500;padding:3px 10px;border-radius:99px;background:#eff6ff;color:#1e40af}
+.card{background:#fff;border:0.5px solid #e2e5ea;border-radius:10px;margin-bottom:10px;overflow:hidden;transition:border-color .3s,box-shadow .3s}
+.card.ready{border:1.5px solid #6ee7b7;box-shadow:0 0 0 3px rgba(5,150,105,.06)}
+.card.new-highlight{animation:highlight 2s ease-out}
+@keyframes highlight{0%{background:#f0fdf4}100%{background:#fff}}
+.card-head{display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:0.5px solid #eef0f3;flex-wrap:wrap}
+.num{width:28px;height:28px;border-radius:50%;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.num-proceso{background:#FAEEDA;color:#854F0B}
+.num-cargado{background:#EAF3DE;color:#27500A}
+.ref{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:500;color:#1a2744}
+.consig{font-size:11px;color:#6b7280;margin-top:1px}
+.chips{display:flex;gap:6px;align-items:center;margin-left:auto;flex-wrap:wrap}
+.chip{font-size:10px;padding:2px 8px;border-radius:4px;white-space:nowrap}
+.chip-pc{background:#FAEEDA;color:#854F0B}
+.chip-ca{background:#EAF3DE;color:#27500A}
+.new-tag{font-size:10px;padding:2px 8px;border-radius:99px;background:#FCEBEB;color:#791F1F;border:0.5px solid #F7C1C1;animation:pulse 1.5s infinite}
+.card-body{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;flex-wrap:wrap;gap:10px}
+.stats{display:flex;gap:18px;flex-wrap:wrap}
+.stat-val{font-size:13px;font-weight:500;color:#1a2744}
+.stat-lbl{font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:.04em}
+.btn-tramitar{font-family:inherit;font-size:12px;font-weight:600;padding:8px 20px;border-radius:8px;border:1px solid #6ee7b7;background:#EAF3DE;color:#27500A;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:background .15s}
+.btn-tramitar:hover{background:#d1fae5}
+.btn-wait{font-family:inherit;font-size:12px;padding:8px 20px;border-radius:8px;border:0.5px solid #e2e5ea;background:#f8f9fb;color:#9ca3af;cursor:not-allowed;display:inline-flex;align-items:center;gap:6px}
+.empty{text-align:center;padding:48px 20px;color:#9ca3af;font-size:14px}
+.empty-icon{font-size:32px;margin-bottom:12px}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(8px);background:#1a2744;color:#fff;padding:8px 20px;border-radius:8px;font-size:13px;opacity:0;transition:all .25s;z-index:999;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">Blue <span>Logistics</span> <span style="font-size:11px;font-weight:400;color:rgba(255,255,255,.5);margin-left:6px">Tramitador</span></div>
+  <div class="header-right">
+    <div class="badge-ready" id="badge-ready" style="display:none">
+      <span class="alert-dot pulse" id="alert-dot"></span>
+      <span id="badge-text">0 listos</span>
+    </div>
+    <span class="sync-ind" id="sync-ind">Cargando...</span>
+  </div>
+</header>
+
+<div class="page">
+  <div class="section-head">
+    <div>
+      <div class="section-title">Mi cola de trabajo</div>
+      <div class="section-sub">Furgones en proceso y cargados · en el orden asignado</div>
+    </div>
+    <span class="count-badge" id="total-count">0 furgones</span>
+  </div>
+  <div id="lista"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/firebase@10.7.1/firebase-app-compat.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/firebase@10.7.1/firebase-firestore-compat.min.js"></script>
+<script>
+var firebaseConfig={
+  apiKey:"AIzaSyBUphB0GdArD37c6jrRhG1dMwHNkKb2Pco",
+  authDomain:"seguimiento-pedidos-cb2f5.firebaseapp.com",
+  projectId:"seguimiento-pedidos-cb2f5",
+  storageBucket:"seguimiento-pedidos-cb2f5.firebasestorage.app",
+  messagingSenderId:"721970817411",
+  appId:"1:721970817411:web:5263a0ce179280b406eeb6"
+};
+firebase.initializeApp(firebaseConfig);
+var db=firebase.firestore();
+var data=[];
+var prevCargados=new Set();
+
+function pn(v){if(typeof v==='number')return isNaN(v)?0:v;var s=String(v||'').replace(',','.');var n=parseFloat(s);return isNaN(n)?0:n;}
+function fmt(n){return Number(n).toLocaleString('es',{maximumFractionDigits:0});}
+
+function toast(msg){
+  var t=document.getElementById('toast');
+  if(!t)return;
+  t.textContent=msg;t.classList.add('show');
+  clearTimeout(t._t);t._t=setTimeout(function(){t.classList.remove('show');},2500);
+}
+
+function playAlert(){
+  try{
+    var ctx=new(window.AudioContext||window.webkitAudioContext)();
+    [0,150,300].forEach(function(delay,i){
+      var o=ctx.createOscillator();
+      var g=ctx.createGain();
+      o.connect(g);g.connect(ctx.destination);
+      o.frequency.value=[880,1100,880][i];
+      g.gain.setValueAtTime(0,ctx.currentTime+delay/1000);
+      g.gain.linearRampToValueAtTime(0.3,ctx.currentTime+delay/1000+0.05);
+      g.gain.linearRampToValueAtTime(0,ctx.currentTime+delay/1000+0.2);
+      o.start(ctx.currentTime+delay/1000);
+      o.stop(ctx.currentTime+delay/1000+0.25);
+    });
+  }catch(e){}
+}
+
+function hoy(){
+  return new Date().toLocaleDateString('es',{day:'2-digit',month:'2-digit',year:'numeric'});
+}
+
+function despacharRef(ref){
+  var grupo=data.filter(function(r){return (r['REF. DESPACHO']||'').trim()===ref;});
+  if(!grupo.length)return;
+  var hoyStr=hoy();
+  grupo.forEach(function(r){
+    r._status='despachado';
+    if(!r._fecha_carga) r._fecha_carga=hoyStr;
+    r._fecha_despacho=hoyStr;
+  });
+  // Save to Firebase
+  var toSave=data.map(function(r){
+    var o={};Object.keys(r).forEach(function(k){o[k]=r[k]===undefined?'':r[k];});return o;
+  });
+  db.collection('config').doc('alldata').set({
+    pedidos:toSave,
+    updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+  }).then(function(){
+    toast('\u2713 '+ref+' despachado');
+    render();
+  }).catch(function(err){toast('\u26a0 Error: '+err.message);});
+}
+
+function render(){
+  var visibles=data.filter(function(r){
+    return r._status==='en-proceso'||r._status==='cargado';
+  });
+
+  // Group by REF, sort by _orden
+  var byRef=new Map();
+  visibles.forEach(function(r){
+    var ref=(r['REF. DESPACHO']||'Sin REF').trim();
+    if(!byRef.has(ref)) byRef.set(ref,{ref:ref,rows:[],orden:r._orden||9999,status:r._status});
+  });
+  var grupos=[...byRef.values()].sort(function(a,b){return (a.orden||9999)-(b.orden||9999);});
+
+  // Badge
+  var listos=grupos.filter(function(g){return g.status==='cargado';}).length;
+  var badge=document.getElementById('badge-ready');
+  var badgeText=document.getElementById('badge-text');
+  if(listos>0){
+    badge.style.display='inline-flex';
+    badgeText.textContent=listos+' listo'+(listos!==1?'s':'')+' para tramitar';
+  } else {
+    badge.style.display='none';
+  }
+
+  document.getElementById('total-count').textContent=grupos.length+' furg\u00f3n'+(grupos.length!==1?'es':'');
+  document.getElementById('sync-ind').textContent='Actualizado \u2713';
+
+  var lista=document.getElementById('lista');
+  if(!grupos.length){
+    lista.innerHTML='<div class="empty"><div class="empty-icon">\u2705</div><div>No hay furgones en proceso actualmente</div></div>';
+    return;
+  }
+
+  lista.innerHTML=grupos.map(function(g,i){
+    var ref=g.ref,rRows=g.rows,st=g.status;
+
+    // Get rows data
+    var allRows=data.filter(function(r){return (r['REF. DESPACHO']||'').trim()===ref;});
+    var consigs=[...new Set(allRows.map(function(r){return (r['Consignatario']||'').trim();}))].join(', ');
+    var rem=[...new Set(allRows.map(function(r){return (r['REMOLQUE']||'').trim();}).filter(Boolean))].join(', ')||'\u2014';
+    var rB=allRows.reduce(function(s,r){return s+pn(r['No. Bultos']);},0);
+    var rP=Math.round(allRows.reduce(function(s,r){return s+pn(r['Peso']);},0)/100)/10;
+    var ots=[...new Set(allRows.map(function(r){return (r['OT']||'').trim();}).filter(Boolean))].join(', ');
+    var isCa=st==='cargado';
+    var isNew=isCa&&!prevCargados.has(ref);
+
+    return '<div class="card'+(isCa?' ready':'')+(isNew?' new-highlight':'')+'" id="card-'+ref.replace(/[^a-z0-9]/gi,'_')+'">'
+      +'<div class="card-head">'
+      +'<div class="num '+(isCa?'num-cargado':'num-proceso')+'">'+(i+1)+'</div>'
+      +'<div style="flex:1;min-width:0">'
+      +'<div class="ref">'+ref+'</div>'
+      +'<div class="consig">'+consigs+' &nbsp;&middot;&nbsp; '+rem+'</div>'
+      +'</div>'
+      +'<div class="chips">'
+      +(isNew?'<span class="new-tag">\ud83d\udd14 Listo</span>':'')
+      +'<span class="chip '+(isCa?'chip-ca':'chip-pc')+'">'+(isCa?'Cargado':'En Proceso')+'</span>'
+      +'</div></div>'
+      +'<div class="card-body">'
+      +'<div class="stats">'
+      +'<div><div class="stat-val">'+allRows.length+'</div><div class="stat-lbl">Pedidos</div></div>'
+      +'<div><div class="stat-val">'+fmt(rB)+'</div><div class="stat-lbl">Bultos</div></div>'
+      +'<div><div class="stat-val">'+rP+' tn</div><div class="stat-lbl">Peso</div></div>'
+      +(ots?'<div><div class="stat-val" style="font-family:monospace;font-size:12px">'+ots+'</div><div class="stat-lbl">OT</div></div>':'')
+      +'</div>'
+      +(isCa
+        ?'<button class="btn-tramitar" onclick="despacharRef(\''+ref+'\')">&#10003; Tramitado &rarr; Despachado</button>'
+        :'<button class="btn-wait" disabled>&#128274; Esperando carga</button>')
+      +'</div></div>';
+  }).join('');
+
+  // Update prevCargados
+  grupos.filter(function(g){return g.status==='cargado';}).forEach(function(g){prevCargados.add(g.ref);});
+}
+
+// Real-time listener
+function startListening(){
+  db.collection('config').doc('alldata').onSnapshot(function(doc){
+    if(!doc.exists) return;
+    var d=doc.data();
+    if(!d.pedidos||!d.pedidos.length) return;
+
+    var newData=d.pedidos.map(function(r){
+      r._factura_env=r._factura_env===true||r._factura_env==='true';
+      r._scanid_env=r._scanid_env===true||r._scanid_env==='true';
+      r._finalizado=r._finalizado===true||r._finalizado==='true';
+      if(!r._scanid) r._scanid='';
+      if(!r['REF. DESPACHO']) r['REF. DESPACHO']='';
+      if(!r['REMOLQUE']) r['REMOLQUE']='';
+      if(!r._fecha_carga) r._fecha_carga='';
+      if(!r._orden&&r._orden!==0) r._orden=9999;
+      return r;
+    });
+
+    // Detect newly cargado refs
+    var newCargados=new Set(newData.filter(function(r){return r._status==='cargado';}).map(function(r){return (r['REF. DESPACHO']||'').trim();}));
+    var hasNew=false;
+    newCargados.forEach(function(ref){if(!prevCargados.has(ref)){hasNew=true;}});
+    if(hasNew&&data.length>0){
+      playAlert();
+      toast('\ud83d\udd14 Nuevo furg\u00f3n listo para tramitar');
+    }
+
+    data=newData;
+    render();
+  },function(err){
+    document.getElementById('sync-ind').textContent='\u26a0 Error de conexi\u00f3n';
+  });
+}
+
+startListening();
+</script>
+</body>
+</html>
